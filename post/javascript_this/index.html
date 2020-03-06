@@ -1,0 +1,228 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>JavaScript this关键字 | Evans Alien</title>
+<link rel="shortcut icon" href="https://evansalien.github.io/favicon.ico?v=1583476692194">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://evansalien.github.io/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="JavaScript this关键字 | Evans Alien - Atom Feed" href="https://evansalien.github.io/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+
+    <meta name="description" content="面向对象语言中 this 表示当前对象的一个引用。
+但在 JavaScript 中 this 不是固定不变的，它会随着执行环境的改变而改变。其主要隐式绑定场景讨论：
+
+全局上下文🌲
+直接函数调用和对象方法形式调用🌳
+DOM时间绑定🎄
+..." />
+    <meta name="keywords" content="JavaScript" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="https://cdn.bootcss.com/highlight.js/9.12.0/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://evansalien.github.io">
+  <img class="avatar" src="https://evansalien.github.io/images/avatar.png?v=1583476692194" alt="">
+  </a>
+  <h1 class="site-title">
+    Evans Alien
+  </h1>
+  <p class="site-description">
+    温故而知新
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          首页
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          归档
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          标签
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          关于
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              JavaScript this关键字
+            </h2>
+            <div class="post-info">
+              <span>
+                2020-03-05
+              </span>
+              <span>
+                2 min read
+              </span>
+              
+                <a href="https://evansalien.github.io/tag/javascript/" class="post-tag">
+                  # JavaScript
+                </a>
+              
+            </div>
+            
+              <img class="post-feature-image" src="https://evansalien.github.io/post-images/javascript_this.jpg" alt="">
+            
+            <div class="post-content-wrapper">
+              <div class="post-content">
+                <p>面向对象语言中 this 表示当前对象的一个引用。<br>
+但在 JavaScript 中 this 不是固定不变的，它会随着执行环境的改变而改变。其主要隐式绑定场景讨论：</p>
+<ol>
+<li>全局上下文🌲</li>
+<li>直接函数调用和对象方法形式调用🌳</li>
+<li>DOM时间绑定🎄</li>
+<li>new 构造函数绑定🌴</li>
+<li>箭头函数🌱</li>
+</ol>
+<h2 id="全局上下文">🌲全局上下文</h2>
+<blockquote>
+<p>这个不用多少了吧，默认指向Window, 严格模式下是 undefined。</p>
+</blockquote>
+<h2 id="直接函数调用和对象方法形式调用">🌳直接函数调用和对象方法形式调用</h2>
+<pre><code class="language-javascript">var obj = {
+    fn: function() {
+        console.log(this.a);
+    },
+    a: 1,
+}
+var a = 2;
+var fn = obj.fn;
+fn(); // 2
+obj.fn(); // 1
+</code></pre>
+<blockquote>
+<p>这种两种情况调用，<strong>this</strong>相当于是<strong>Window</strong>和 <strong>obj</strong>。</p>
+</blockquote>
+<h2 id="dom事件绑定">🎄DOM事件绑定</h2>
+<blockquote>
+<p>onclick和addEventerListener中 this 默认指向绑定事件的元素。IE比较奇异，使用attachEvent，里面的this默认指向window。</p>
+</blockquote>
+<h2 id="new-构造函数绑定">🌴 new 构造函数绑定</h2>
+<blockquote>
+<p>此时构造函数中的this指向实例对象。</p>
+</blockquote>
+<h2 id="箭头函数">🌱 箭头函数</h2>
+<blockquote>
+<p>箭头函数没有this, 因此也不能绑定。里面的this会指向当前最近的非箭头函数的this，找不到就是window(严格模式是undefined)。</p>
+</blockquote>
+<pre><code class="language-javascript">var obj = {
+  a: function() {
+    var fn = () =&gt; {
+      console.log(this);
+    }
+    fn();
+  }
+}
+obj.a(); // 找到最近的非箭头函数a，a现在绑定着obj, 因此箭头函数中的this是obj
+</code></pre>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#%E5%85%A8%E5%B1%80%E4%B8%8A%E4%B8%8B%E6%96%87">🌲全局上下文</a></li>
+<li><a href="#%E7%9B%B4%E6%8E%A5%E5%87%BD%E6%95%B0%E8%B0%83%E7%94%A8%E5%92%8C%E5%AF%B9%E8%B1%A1%E6%96%B9%E6%B3%95%E5%BD%A2%E5%BC%8F%E8%B0%83%E7%94%A8">🌳直接函数调用和对象方法形式调用</a></li>
+<li><a href="#dom%E4%BA%8B%E4%BB%B6%E7%BB%91%E5%AE%9A">🎄DOM事件绑定</a></li>
+<li><a href="#new-%E6%9E%84%E9%80%A0%E5%87%BD%E6%95%B0%E7%BB%91%E5%AE%9A">🌴 new 构造函数绑定</a></li>
+<li><a href="#%E7%AE%AD%E5%A4%B4%E5%87%BD%E6%95%B0">🌱 箭头函数</a></li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+
+        
+
+        <div class="site-footer">
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">Gridea</a>
+  <a class="rss" href="https://evansalien.github.io/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>
