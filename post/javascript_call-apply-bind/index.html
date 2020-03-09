@@ -1,0 +1,392 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>JavaScript 中的 call, apply, bind | Evans Alien</title>
+<link rel="shortcut icon" href="https://evansalien.github.io/favicon.ico?v=1583716674460">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://evansalien.github.io/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="JavaScript 中的 call, apply, bind | Evans Alien - Atom Feed" href="https://evansalien.github.io/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+
+    <meta name="description" content="call、apply 、 bin区别
+call: call() 方法在使用一个指定的 this 值和若干个指定的参数值的前提下调用某个函数或方法。
+  var foo = {
+    value: 1,
+  };
+
+  function b..." />
+    <meta name="keywords" content="" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="https://cdn.bootcss.com/highlight.js/9.12.0/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://evansalien.github.io">
+  <img class="avatar" src="https://evansalien.github.io/images/avatar.png?v=1583716674460" alt="">
+  </a>
+  <h1 class="site-title">
+    Evans Alien
+  </h1>
+  <p class="site-description">
+    温故而知新
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          首页
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          归档
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          标签
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          关于
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              JavaScript 中的 call, apply, bind
+            </h2>
+            <div class="post-info">
+              <span>
+                2020-03-06
+              </span>
+              <span>
+                5 min read
+              </span>
+              
+            </div>
+            
+              <img class="post-feature-image" src="https://evansalien.github.io/post-images/javascript_call-apply-bind.jpg" alt="">
+            
+            <div class="post-content-wrapper">
+              <div class="post-content">
+                <h1 id="call-apply-bin区别">call、apply 、 bin区别</h1>
+<h2 id="call-call-方法在使用一个指定的-this-值和若干个指定的参数值的前提下调用某个函数或方法">call: call() 方法在使用一个指定的 this 值和若干个指定的参数值的前提下调用某个函数或方法。</h2>
+<pre><code class="language-javascript">  var foo = {
+    value: 1,
+  };
+
+  function bar() {
+    console.log(this.value);
+  }
+
+  bar.call(foo); // 1
+
+  // 1. call 改变了this的指向，指向到了foo
+
+  // 2. bar 函数执行了
+</code></pre>
+<p><strong>模拟实现call</strong></p>
+<pre><code class="language-javascript">  // 如何模拟上面这两个步骤呢？
+
+  // 试想调用call的时候，把foo对象该找成如下效果
+
+  var foo = {
+    value: 1,
+    bar: function () {
+      console.log(this.value)
+    }
+  };
+
+  foo.bar(); // 1
+
+  // 这个时候 this 就指向了 foo，是不是很简单呢？
+
+  // 但是这样却给 foo 对象本身添加了一个属性，这可不行呐！
+
+  // 不过也不用担心，我们用 delete 再删除它不就好了~
+
+  // 所以可以模拟拆分步骤
+
+  // 1. 将函数设为对象的属性 foo.fn = bar
+
+  // 2. 执行该函数 foo.fn()
+
+  // 3. 删除该函数 delete foo.fn
+
+  Function.prototype.call1 = function(context) {
+    context.fn = this;
+    context.fn();
+    delete context.fn;
+  }
+
+  // 测试一下
+  var foo = {
+    value: 1
+  };
+  
+  function bar () {
+    console.log(this.value)
+  }
+
+  bar.call1(foo); // 1
+
+  // 正好可以打印1，那如果传入多个参数呢？
+
+  // 我们可以从 Arguments 对象中取值，取出第二个到最后一个参数，然后放到一个数组里
+
+  Function.prototype.call2 = function(context) {
+    var context = context || window; // 如果不传则this为window
+    context.fn = this
+
+    var arg = [];
+    for (var i = 1, len = arguments.length; i &lt; len; i++) {
+      args.push('arguments[' + i + ']');
+    }
+
+    var result = eval('context.fn(' + args +')');
+
+    delete context.fn
+    return result;
+  }
+
+  // 测试一下
+  var value = 2;
+
+  var obj = {
+      value: 1
+  }
+
+  function bar(name, age) {
+      console.log(this.value);
+      return {
+          value: this.value,
+          name: name,
+          age: age
+      }
+  }
+
+  bar.call(null); // 2
+
+  console.log(bar.call2(obj, 'kevin', 18));
+  // 1
+  // Object {
+  //    value: 1,
+  //    name: 'kevin',
+  //    age: 18
+  // }
+
+</code></pre>
+<p><strong>模拟实现applay</strong></p>
+<pre><code class="language-javascript">  // 其实apply的实现跟call类似
+  
+  Function.prototype.apply1 = function(context, arr) {
+    var context = Object(ocntext) || window;
+    context.fn = this;
+
+    var result;
+    if (!arr) {
+      result = context.fn();
+    } else {
+      var arg = [];
+      for (var i = 0, len = arr.length; i &lt; len; i++) {
+            args.push('arr[' + i + ']');
+        }
+      result = eval('context.fn(' + args + ')')
+    }
+
+    delete context.fn
+    return result;
+  }
+
+</code></pre>
+<h2 id="bind-bind-方法会创建一个新函数-当这个新函数被调用时bind-的第一个参数将作为它运行时的-this之后的一序列参数将会在传递的实参前传入作为它的参数">bind: bind() 方法会创建一个新函数。当这个新函数被调用时，bind() 的第一个参数将作为它运行时的 this，之后的一序列参数将会在传递的实参前传入作为它的参数。</h2>
+<pre><code class="language-javascript">  // 由上面的介绍可以得到两点的结论
+
+  // 1. 返回一个函数
+  // 2. 可以传入函数
+
+  var foo = {
+    value: 1
+  };
+
+  function bar() {
+    console.log(this.value);
+  }
+
+  var bindFoo = bar.bind1(foo);
+
+  bindFoo() // 1
+
+  Function.prototype.bind1 = function(context) {
+    var self = this;
+    return function() {
+      self.apply(context);
+    }
+  }
+
+
+  // 因为 bind 还有一个特点，就是: 一个绑定函数也能使用new操作符创建对象：这种行为就像把原函数当成构造器。提供的 this 值被忽略，同时调用时的参数被提供给模拟函数。
+
+  // 换句话来说当 bind 返回的函数作为构造函数的时候，bind 时指定的 this 值会失效，但传入的参数依然生效。举个例子：
+
+  var value = 2;
+
+  var foo = {
+      value: 1
+  };
+
+  function bar(name, age) {
+      this.habit = 'shopping';
+      console.log(this.value);
+      console.log(name);
+      console.log(age);
+  }
+
+  bar.prototype.friend = 'kevin';
+
+  var bindFoo = bar.bind(foo, 'daisy');
+
+  var obj = new bindFoo('18');
+  // undefined
+  // daisy
+  // 18
+  console.log(obj.habit);
+  console.log(obj.friend);
+  // shopping
+  // kevin
+
+  // 尽管在全局和 foo 中都声明了 value 值，最后依然返回了 undefind，说明绑定的 this 失效了
+
+  // 所以我们可以通过修改返回函数的原型来实现
+
+  Function.prototype.bind2 = function(context) {
+    if (typeof this !== 'function') {
+      throw new Error(&quot;Function.prototype.bind - what is trying to be bound is not callable&quot;);
+    }
+    var self = this;
+    var args = Array.prototype.slice.call(arguments, 1);
+    var fbound = function () {
+      var bindArgs = Array.prototype.slice.call(arguments);
+      // 当作为构造函数时，this 指向实例，self 指向绑定函数，因为下面一句 `fbound.prototype = this.prototype;`，已经修改了 fbound.prototype 为 绑定函数的 prototype，此时结果为 true，当结果为 true 的时候，this 指向实例。
+
+      // 当作为普通函数时，this 指向 window，self 指向绑定函数，此时结果为 false，当结果为 false 的时候，this 指向绑定的 context。
+      self.apply(this instanceof self ? this : context, args.concat(bindArgs));
+    }
+
+    // 修改返回函数的 prototype 为绑定函数的 prototype，实例就可以继承函数的原型中的值
+    fbound.prototype = this.prototype;
+
+    return fbound;
+  }
+
+
+</code></pre>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li><a href="#call-apply-bin%E5%8C%BA%E5%88%AB">call、apply 、 bin区别</a>
+<ul>
+<li><a href="#call-call-%E6%96%B9%E6%B3%95%E5%9C%A8%E4%BD%BF%E7%94%A8%E4%B8%80%E4%B8%AA%E6%8C%87%E5%AE%9A%E7%9A%84-this-%E5%80%BC%E5%92%8C%E8%8B%A5%E5%B9%B2%E4%B8%AA%E6%8C%87%E5%AE%9A%E7%9A%84%E5%8F%82%E6%95%B0%E5%80%BC%E7%9A%84%E5%89%8D%E6%8F%90%E4%B8%8B%E8%B0%83%E7%94%A8%E6%9F%90%E4%B8%AA%E5%87%BD%E6%95%B0%E6%88%96%E6%96%B9%E6%B3%95">call: call() 方法在使用一个指定的 this 值和若干个指定的参数值的前提下调用某个函数或方法。</a></li>
+<li><a href="#bind-bind-%E6%96%B9%E6%B3%95%E4%BC%9A%E5%88%9B%E5%BB%BA%E4%B8%80%E4%B8%AA%E6%96%B0%E5%87%BD%E6%95%B0-%E5%BD%93%E8%BF%99%E4%B8%AA%E6%96%B0%E5%87%BD%E6%95%B0%E8%A2%AB%E8%B0%83%E7%94%A8%E6%97%B6bind-%E7%9A%84%E7%AC%AC%E4%B8%80%E4%B8%AA%E5%8F%82%E6%95%B0%E5%B0%86%E4%BD%9C%E4%B8%BA%E5%AE%83%E8%BF%90%E8%A1%8C%E6%97%B6%E7%9A%84-this%E4%B9%8B%E5%90%8E%E7%9A%84%E4%B8%80%E5%BA%8F%E5%88%97%E5%8F%82%E6%95%B0%E5%B0%86%E4%BC%9A%E5%9C%A8%E4%BC%A0%E9%80%92%E7%9A%84%E5%AE%9E%E5%8F%82%E5%89%8D%E4%BC%A0%E5%85%A5%E4%BD%9C%E4%B8%BA%E5%AE%83%E7%9A%84%E5%8F%82%E6%95%B0">bind: bind() 方法会创建一个新函数。当这个新函数被调用时，bind() 的第一个参数将作为它运行时的 this，之后的一序列参数将会在传递的实参前传入作为它的参数。</a></li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://evansalien.github.io/post/javascript_this/">
+              <h3 class="post-title">
+                JavaScript this关键字
+              </h3>
+            </a>
+          </div>
+        
+
+        
+
+        <div class="site-footer">
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">Gridea</a>
+  <a class="rss" href="https://evansalien.github.io/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>
