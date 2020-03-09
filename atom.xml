@@ -2,7 +2,7 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
     <id>https://evansalien.github.io</id>
     <title>Evans Alien</title>
-    <updated>2020-03-09T01:18:02.228Z</updated>
+    <updated>2020-03-09T05:23:22.735Z</updated>
     <generator>https://github.com/jpmonette/feed</generator>
     <link rel="alternate" href="https://evansalien.github.io"/>
     <link rel="self" href="https://evansalien.github.io/atom.xml"/>
@@ -10,6 +10,197 @@
     <logo>https://evansalien.github.io/images/avatar.png</logo>
     <icon>https://evansalien.github.io/favicon.ico</icon>
     <rights>All rights reserved 2020, Evans Alien</rights>
+    <entry>
+        <title type="html"><![CDATA[EventLoop]]></title>
+        <id>https://evansalien.github.io/post/eventloop/</id>
+        <link href="https://evansalien.github.io/post/eventloop/">
+        </link>
+        <updated>2020-03-09T05:11:41.000Z</updated>
+        <content type="html"><![CDATA[<h1 id="如何理解eventloop的宏任务和微任务">如何理解EventLoop的宏任务和微任务</h1>
+<h2 id="宏任务-macrotask-引入">宏任务 (MacroTask) 引入</h2>
+<p><strong>在JS中，大部分的任务都是主线程上执行，常见的任务有：</strong></p>
+<pre><code>1. 渲染事件
+2. 用户交互事件
+3. js脚本执行
+4. 网络请求、文件读写完成事件等等
+
+bool keep_running = true;
+void MainTherad(){
+  for(;;){
+    //执行队列中的任务
+    Task task = task_queue.takeTask();
+    ProcessTask(task);
+    
+    //执行延迟队列中的任务
+    ProcessDelayTask()
+
+    if(!keep_running) //如果设置了退出标志，那么直接退出线程循环
+        break; 
+  }
+}
+</code></pre>
+<p><strong>为了让这些事件有条不紊地进行，JS引擎需要对之执行的顺序做一定的安排，V8 其实采用的是一种队列的方式来存储这些任务， 即先进来的先执行 ，但是其中包含了两种任务队列，除了上述提到的任务队列， 还有一个延迟队列，它专门处理诸如setTimeout/setInterval这样的定时器回调任务</strong></p>
+<h2 id="微任务-microtask-引入">微任务 (MicroTask) 引入</h2>
+<p><strong>对于每个宏任务而言，其内部都有一个微任务队列。那为什么要引入微任务？微任务在什么时候执行呢？</strong><br /><br>
+<strong>其实引入微任务的初衷是为了解决异步回调的问题。想一想，对于异步回调的处理，有多少种方式？总结起来有两点:</strong></p>
+<pre><code>1. 将异步回调进行宏任务队列的入队操作。
+2. 将异步回调放到当前宏任务的末尾。
+</code></pre>
+<p><strong>如果采用第一种方式，那么执行回调的时机应该是在前面所有的宏任务完成之后，倘若现在的任务队列非常长，那么回调迟迟得不到执行，造成应用卡顿。</strong><br>
+<strong>为了规避这样的问题，V8 引入了第二种方式，这就是微任务的解决方式。在每一个宏任务中定义一个微任务队列，当该宏任务执行完成，会检查其中的微任务队列，如果为空则直接执行下一个宏任务，如果不为空，则依次执行微任务，执行完成才去执行下一个宏任务。</strong></p>
+<p>常见的微任务有MutationObserver、Promise.then(或.reject) 以及以 Promise 为基础开发的其他技术(比如fetch API), 还包括 V8 的垃圾回收过程。</p>
+<p><strong>Ok, 这便是宏任务和微任务的概念，接下来正式介绍JS非常重要的运行机制——EventLoop。</strong></p>
+<h2 id="如何理解eventloop浏览器">如何理解EventLoop——浏览器</h2>
+<pre><code class="language-javascript">  console.log('start');
+  setTimeout(() =&gt; {
+    console.log('timeout');
+  });
+  Promise.resolve().then(() =&gt; {
+    console.log('resolve');
+  });
+  console.log('end');
+
+  
+  // console.log('start')
+  // async function test1 () {
+  //   console.log('test1 start')
+  //   await test2()
+  //   console.log('test1 end')
+  // }
+  // setTimeout(() =&gt; {
+  //   console.log('setTimeout')
+  // }, 0)
+  // new Promise(function (resolve) {
+  //   console.log('promise start')
+  //   resolve();
+  // }).then(res =&gt; {
+  //   console.log('promise end')
+  // })
+  // async function test2() {
+  //   console.log('test2 start')
+  // }
+  // test1()
+  // console.log('end')
+
+  // start 
+  // promise start
+  // test1 start
+  // test2 start
+  // end
+  // promise end
+  // test1 end
+  // setTimeout
+
+</code></pre>
+<p><strong>我们来分析一下：</strong></p>
+<pre><code>1. 刚开始整个脚本作为一个宏任务来执行，对于同步代码直接压入执行栈中，进行执行，因此先打印start和end
+2. setTimeout 作为一个宏任务放入宏任务队列
+3. Promise.then作为一个为微任务放入到微任务队列
+4. 当本次宏任务执行完，检查微任务队列，发现一个Promise.then, 执行
+5. 接下来进入到下一个宏任务——setTimeout, 执行
+</code></pre>
+<p>所以输出的是：</p>
+<pre><code>// start
+// end
+// resolve
+// timeout
+</code></pre>
+<p><strong>这样就带大家直观地感受到了浏览器环境下 EventLoop 的执行流程。不过，这只是其中的一部分情况，接下来我们来做一个更完整的总结</strong></p>
+<pre><code>1. 一开始整段脚本作为第一个宏任务执行
+2. 执行过程中同步代码直接执行，宏任务进入宏任务队列，微任务进入微任务队列
+3. 当前宏任务执行完出队，检查微任务队列，如果有则依次执行，直到微任务队列为空
+4. 执行浏览器 UI 线程的渲染工作
+5. 检查是否有Web worker任务，有则执行
+6. 执行队首新的宏任务，回到2，依此循环，直到宏任务和微任务队列都为空
+</code></pre>
+<p><strong>经典面试题</strong></p>
+<pre><code class="language-javascript">async function async1() {
+  console.log(&quot;async1 start&quot;);
+  await async2();
+  console.log(&quot;async1 end&quot;);
+  return 'async return';
+}
+
+async function async2() {
+  console.log(&quot;async2&quot;);
+}
+
+console.log(&quot;script start&quot;);
+
+setTimeout(function() {
+  console.log(&quot;setTimeout&quot;);
+}, 0);
+
+async1().then(function (message) { console.log(message) });
+
+new Promise(function(resolve) {
+  console.log(&quot;promise1&quot;);
+  resolve();
+}).then(function() {
+  console.log(&quot;promise2&quot;);
+});
+
+console.log(&quot;script end&quot;);
+</code></pre>
+<h2 id="如何理解eventloopnodejs">如何理解EventLoop——nodejs</h2>
+<p><strong>nodejs和浏览器的eventLoop还是有很大的差别的，先来看一张node的eventLoop流程图吧</strong><br>
+<img src="https://evansalien.github.io/post-images/1583730932501.png" alt="" loading="lazy"></p>
+<p><strong>别说你，我第一时间看这个也是一面懵，不急慢慢来拆分nodej的事件循环机制</strong></p>
+<h3 id="三大关键阶段">三大关键阶段</h3>
+<p>首先，梳理一下 nodejs 三个非常重要的执行阶段:</p>
+<pre><code>1. 执行 定时器回调 的阶段。检查定时器，如果到了时间，就执行回调。这些定时器就是setTimeout、setInterval。这个阶段暂且叫它timer。
+
+2. 轮询(英文叫poll)阶段。因为在node代码中难免会有异步操作，比如文件I/O，网络I/O等等，那么当这些异步操作做完了，就会来通知JS主线程，怎么通知呢？就是通过'data'、'connect'等事件使得事件循环到达 poll 阶段。到达了这个阶段后: 
+
+如果当前已经存在定时器，而且有定时器到时间了，拿出来执行，eventLoop 将回到timer阶段。
+
+如果没有定时器, 会去看回调函数队列。
+
+(1) 如果队列不为空，拿出队列中的方法一次执行
+
+(2) 如果队列为空，检查是否有 setImmdiate 的回调
+    
+    a. 有则前往check阶段(下面会说)
+
+    b. 没有则继续等待，相当于阻塞了一段时间(阻塞时间是有上限的), 等待 callback 函数加入队列，加入后会立刻执行。一段时间后自动进入 check 阶段
+
+1. check 阶段。这是一个比较简单的阶段，直接执行 setImmdiate 的回调。    
+</code></pre>
+<p><strong>这三个阶段为一个循环过程。不过现在的eventLoop并不完整，我们现在就来一一地完善</strong></p>
+<h3 id="完善">完善</h3>
+<p><strong>首先，当第 1 阶段结束后，可能并不会立即等待到异步事件的响应，这时候 nodejs 会进入到 I/O异常的回调阶段。比如说 TCP 连接遇到ECONNREFUSED，就会在这个时候执行回调。</strong></p>
+<p><strong>并且在 check 阶段结束后还会进入到 关闭事件的回调阶段。如果一个 socket 或句柄（handle）被突然关闭，例如 socket.destroy()， 'close' 事件的回调就会在这个阶段执行。</strong></p>
+<p><strong>梳理一下，nodejs 的 eventLoop 分为下面的几个阶段:</strong></p>
+<pre><code>1. timer 阶段
+2. I/O 异常回调阶段
+3. 空闲、预备状态(第2阶段结束，poll 未触发之前)
+4. poll 阶段
+5. check 阶段
+6. 关闭事件的回调阶段
+</code></pre>
+<pre><code class="language-javascript">  setTimeout(()=&gt;{
+      console.log('timer1')
+      Promise.resolve().then(function() {
+          console.log('promise1')
+      })
+  }, 0)
+  setTimeout(()=&gt;{
+      console.log('timer2')
+      Promise.resolve().then(function() {
+          console.log('promise2')
+      })
+  }, 0)
+  // timer1
+  // promise1
+  // time2
+  // promise2
+</code></pre>
+<h3 id="nodejs-和-浏览器关于eventloop的主要区别">nodejs 和 浏览器关于eventLoop的主要区别</h3>
+<p><strong>两者最主要的区别在于浏览器中的微任务是在每个相应的宏任务中执行的，而nodejs中的微任务是在不同阶段之间执行的。</strong></p>
+<h3 id="关于processnexttick的一点说明">关于process.nextTick的一点说明</h3>
+<p><strong>process.nextTick 是一个独立于 eventLoop 的任务队列。在每一个 eventLoop 阶段完成后会去检查这个队列，如果里面有任务，会让这部分任务优先于微任务执行。</strong></p>
+]]></content>
+    </entry>
     <entry>
         <title type="html"><![CDATA[JavaScript 中的 call, apply, bind]]></title>
         <id>https://evansalien.github.io/post/javascript_call-apply-bind/</id>
