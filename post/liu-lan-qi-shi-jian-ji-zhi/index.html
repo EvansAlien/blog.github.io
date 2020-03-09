@@ -2,23 +2,23 @@
   <head>
     <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>JavaScript this关键字 | Evans Alien</title>
+<title>浏览器-事件机制 | Evans Alien</title>
 <link rel="shortcut icon" href="https://evansalien.github.io/favicon.ico?v=1583747103686">
 <link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
 <link rel="stylesheet" href="https://evansalien.github.io/styles/main.css">
-<link rel="alternate" type="application/atom+xml" title="JavaScript this关键字 | Evans Alien - Atom Feed" href="https://evansalien.github.io/atom.xml">
+<link rel="alternate" type="application/atom+xml" title="浏览器-事件机制 | Evans Alien - Atom Feed" href="https://evansalien.github.io/atom.xml">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
 
 
 
-    <meta name="description" content="面向对象语言中 this 表示当前对象的一个引用。
-但在 JavaScript 中 this 不是固定不变的，它会随着执行环境的改变而改变。其主要隐式绑定场景讨论：
+    <meta name="description" content="事件触发三个阶段
+事件触发有三个阶段
 
-全局上下文🌲
-直接函数调用和对象方法形式调用🌳
-DOM时间绑定🎄
-..." />
-    <meta name="keywords" content="JavaScript" />
+window往事件触发出传播，遇到注册的捕获事件会触发
+传播到事件触发处往window传播，遇到注册的冒泡事件会触发
+
+事件触发一般来说会按照上面的顺序进行，但是也有特例，如果给一个目标节点同时注册冒..." />
+    <meta name="keywords" content="" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
     <script src="https://cdn.bootcss.com/highlight.js/9.12.0/highlight.min.js"></script>
   </head>
@@ -80,87 +80,60 @@ DOM时间绑定🎄
         <div class="post-detail">
           <article class="post">
             <h2 class="post-title">
-              JavaScript this关键字
+              浏览器-事件机制
             </h2>
             <div class="post-info">
               <span>
-                2020-03-05
+                2020-03-09
               </span>
               <span>
                 2 min read
               </span>
               
-                <a href="https://evansalien.github.io/tag/javascript/" class="post-tag">
-                  # JavaScript
-                </a>
-              
             </div>
             
-              <img class="post-feature-image" src="https://evansalien.github.io/post-images/javascript_this.jpg" alt="">
+              <img class="post-feature-image" src="https://evansalien.github.io/post-images/liu-lan-qi-shi-jian-ji-zhi.jpg" alt="">
             
             <div class="post-content-wrapper">
               <div class="post-content">
-                <p>面向对象语言中 this 表示当前对象的一个引用。<br>
-但在 JavaScript 中 this 不是固定不变的，它会随着执行环境的改变而改变。其主要隐式绑定场景讨论：</p>
-<ol>
-<li>全局上下文🌲</li>
-<li>直接函数调用和对象方法形式调用🌳</li>
-<li>DOM时间绑定🎄</li>
-<li>new 构造函数绑定🌴</li>
-<li>箭头函数🌱</li>
-</ol>
-<h2 id="全局上下文">🌲全局上下文</h2>
-<blockquote>
-<p>这个不用多少了吧，默认指向Window, 严格模式下是 undefined。</p>
-</blockquote>
-<h2 id="直接函数调用和对象方法形式调用">🌳直接函数调用和对象方法形式调用</h2>
-<pre><code class="language-javascript">var obj = {
-    fn: function() {
-        console.log(this.a);
-    },
-    a: 1,
-}
-var a = 2;
-var fn = obj.fn;
-fn(); // 2
-obj.fn(); // 1
-</code></pre>
-<blockquote>
-<p>这种两种情况调用，<strong>this</strong>相当于是<strong>Window</strong>和 <strong>obj</strong>。</p>
-</blockquote>
-<h2 id="dom事件绑定">🎄DOM事件绑定</h2>
-<blockquote>
-<p>onclick和addEventerListener中 this 默认指向绑定事件的元素。IE比较奇异，使用attachEvent，里面的this默认指向window。</p>
-</blockquote>
-<h2 id="new-构造函数绑定">🌴 new 构造函数绑定</h2>
-<blockquote>
-<p>此时构造函数中的this指向实例对象。</p>
-</blockquote>
-<h2 id="箭头函数">🌱 箭头函数</h2>
-<blockquote>
-<p>箭头函数没有this, 因此也不能绑定。里面的this会指向当前最近的非箭头函数的this，找不到就是window(严格模式是undefined)。</p>
-</blockquote>
-<pre><code class="language-javascript">var obj = {
-  a: function() {
-    var fn = () =&gt; {
-      console.log(this);
-    }
-    fn();
-  }
-}
-obj.a(); // 找到最近的非箭头函数a，a现在绑定着obj, 因此箭头函数中的this是obj
-</code></pre>
+                <h2 id="事件触发三个阶段">事件触发三个阶段</h2>
+<h3 id="事件触发有三个阶段">事件触发有三个阶段</h3>
+<ul>
+<li><strong>window</strong>往事件触发出传播，遇到注册的捕获事件会触发</li>
+<li>传播到事件触发处往<strong>window</strong>传播，遇到注册的冒泡事件会触发</li>
+</ul>
+<p>事件触发一般来说会按照上面的顺序进行，但是也有特例，如果给一个目标节点同时注册冒泡和捕获事件，事件触发会按照注册的顺序执行。<br>
+<img src="https://evansalien.github.io/post-images/1583746493173.png" alt="" loading="lazy"></p>
+<h2 id="注册事件">注册事件</h2>
+<p>通常我们使用 addEventListener 注册事件，该函数的第三个参数可以是布尔值，也可以是对象。对于布尔值 useCapture 参数来说，该参数默认值为 false 。useCapture 决定了注册的事件是捕获事件还是冒泡事件。对于对象参数来说，可以使用以下几个属性：</p>
+<ul>
+<li>capture，布尔值，和 useCapture 作用一样</li>
+<li>once，布尔值，值为 true 表示该回调只会调用一次，调用后会移除监听</li>
+<li>passive，布尔值，表示永远不会调用 preventDefault</li>
+</ul>
+<p>一般来说，我们只希望事件只触发在目标上，这时候可以使用 stopPropagation 来阻止事件的进一步传播。通常我们认为 stopPropagation 是用来阻止事件冒泡的，其实该函数也可以阻止捕获事件。stopImmediatePropagation 同样也能实现阻止事件，但是还能阻止该事件目标执行别的注册事件。<br>
+<img src="https://evansalien.github.io/post-images/1583746844308.png" alt="" loading="lazy"></p>
+<h2 id="事件代理">事件代理</h2>
+<p>如果一个节点中的子节点是动态生成的，那么子节点需要注册事件的话应该注册在父节点上</p>
+<figure data-type="image" tabindex="1"><img src="https://evansalien.github.io/post-images/1583746938029.png" alt="" loading="lazy"></figure>
+<p>事件代理的方式相对于直接给目标注册事件来说，有以下优点</p>
+<ul>
+<li>节省内存</li>
+<li>不需要给子节点注销事件</li>
+</ul>
 
               </div>
               <div class="toc-container">
                 <ul class="markdownIt-TOC">
 <li>
 <ul>
-<li><a href="#%E5%85%A8%E5%B1%80%E4%B8%8A%E4%B8%8B%E6%96%87">🌲全局上下文</a></li>
-<li><a href="#%E7%9B%B4%E6%8E%A5%E5%87%BD%E6%95%B0%E8%B0%83%E7%94%A8%E5%92%8C%E5%AF%B9%E8%B1%A1%E6%96%B9%E6%B3%95%E5%BD%A2%E5%BC%8F%E8%B0%83%E7%94%A8">🌳直接函数调用和对象方法形式调用</a></li>
-<li><a href="#dom%E4%BA%8B%E4%BB%B6%E7%BB%91%E5%AE%9A">🎄DOM事件绑定</a></li>
-<li><a href="#new-%E6%9E%84%E9%80%A0%E5%87%BD%E6%95%B0%E7%BB%91%E5%AE%9A">🌴 new 构造函数绑定</a></li>
-<li><a href="#%E7%AE%AD%E5%A4%B4%E5%87%BD%E6%95%B0">🌱 箭头函数</a></li>
+<li><a href="#%E4%BA%8B%E4%BB%B6%E8%A7%A6%E5%8F%91%E4%B8%89%E4%B8%AA%E9%98%B6%E6%AE%B5">事件触发三个阶段</a>
+<ul>
+<li><a href="#%E4%BA%8B%E4%BB%B6%E8%A7%A6%E5%8F%91%E6%9C%89%E4%B8%89%E4%B8%AA%E9%98%B6%E6%AE%B5">事件触发有三个阶段</a></li>
+</ul>
+</li>
+<li><a href="#%E6%B3%A8%E5%86%8C%E4%BA%8B%E4%BB%B6">注册事件</a></li>
+<li><a href="#%E4%BA%8B%E4%BB%B6%E4%BB%A3%E7%90%86">事件代理</a></li>
 </ul>
 </li>
 </ul>
@@ -170,6 +143,15 @@ obj.a(); // 找到最近的非箭头函数a，a现在绑定着obj, 因此箭头�
           </article>
         </div>
 
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://evansalien.github.io/post/eventloop/">
+              <h3 class="post-title">
+                EventLoop
+              </h3>
+            </a>
+          </div>
         
 
         
