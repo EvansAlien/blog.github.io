@@ -1,0 +1,287 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>浏览器-渲染篇(上) | Evans Alien</title>
+<link rel="shortcut icon" href="https://evansalien.github.io/favicon.ico?v=1583835049074">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://evansalien.github.io/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="浏览器-渲染篇(上) | Evans Alien - Atom Feed" href="https://evansalien.github.io/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+
+    <meta name="description" content="浏览器渲染机制一般分为以下步骤
+
+处理HTML并构建DOM树。
+处理CSS构建CSSOM树。
+将DOM与CSSOM合成一个渲染树。
+根据渲染树来布局，计算每个节点的位置。
+调用GPU绘制，合成图层，绘制在浏览器上。
+
+
+
+
+DOM树：解析 ..." />
+    <meta name="keywords" content="浏览器" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="https://cdn.bootcss.com/highlight.js/9.12.0/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://evansalien.github.io">
+  <img class="avatar" src="https://evansalien.github.io/images/avatar.png?v=1583835049074" alt="">
+  </a>
+  <h1 class="site-title">
+    Evans Alien
+  </h1>
+  <p class="site-description">
+    温故而知新
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          首页
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          归档
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          标签
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          关于
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              浏览器-渲染篇(上)
+            </h2>
+            <div class="post-info">
+              <span>
+                2020-03-10
+              </span>
+              <span>
+                8 min read
+              </span>
+              
+                <a href="https://evansalien.github.io/tag/browser/" class="post-tag">
+                  # 浏览器
+                </a>
+              
+            </div>
+            
+              <img class="post-feature-image" src="https://evansalien.github.io/post-images/liu-lan-qi-xuan-ran-pian.jpg" alt="">
+            
+            <div class="post-content-wrapper">
+              <div class="post-content">
+                <h1 id="浏览器渲染机制一般分为以下步骤">浏览器渲染机制一般分为以下步骤</h1>
+<ol>
+<li>处理HTML并构建DOM树。</li>
+<li>处理CSS构建CSSOM树。</li>
+<li>将DOM与CSSOM合成一个渲染树。</li>
+<li>根据渲染树来布局，计算每个节点的位置。</li>
+<li>调用GPU绘制，合成图层，绘制在浏览器上。</li>
+</ol>
+<figure data-type="image" tabindex="1"><img src="https://evansalien.github.io/post-images/1583830191702.jpg" alt="" loading="lazy"></figure>
+<ul>
+<li>
+<p><strong>DOM树</strong>：解析 HTML 以创建的是 DOM 树（DOM tree ）：渲染引擎开始解析 HTML 文档，转换树中的标签到 DOM 节点，它被称为“内容树”。</p>
+</li>
+<li>
+<p><strong>CSSOM树</strong>：解析 CSS（包括外部 CSS 文件和样式元素）创建的是 CSSOM 树。CSSOM 的解析过程与 DOM 的解析过程是并行的。</p>
+</li>
+<li>
+<p><strong>渲染树</strong>：CSSOM 与 DOM 结合，之后我们得到的就是渲染树（Render tree ）。</p>
+</li>
+<li>
+<p><strong>布局渲染树</strong>：从根节点递归调用，计算每一个元素的大小、位置等，给每个节点所应该出现在屏幕上的精确坐标，我们便得到了基于渲染树的布局渲染树（Layout of the render tree）。</p>
+</li>
+<li>
+<p><strong>绘制渲染树</strong>：遍历渲染树，每个节点将使用 UI 后端层来绘制。整个过程叫做绘制渲染树（Painting the render tree）。</p>
+</li>
+</ul>
+<h3 id="总结下渲染过程">总结下渲染过程</h3>
+<p>开始是基于 HTML 构建一个 DOM 树，这棵 DOM 树与 CSS 解释器解析出的 CSSOM 相结合，就有了布局渲染树。最后浏览器以布局渲染树为蓝本，去计算布局并绘制图像，我们页面的初次渲染就大功告成了。<br>
+之后每当一个新元素加入到这个 DOM 树当中，浏览器便会通过 CSS 引擎查遍 CSS 样式表，找到符合该元素的样式规则应用到这个元素上，然后再重新去绘制它。</p>
+<h2 id="css的优化">CSS的优化</h2>
+<p>在CSS选择器方面的优化建议之前，先说一下CSS引擎查找样式表，对每条写的规则都是从右往左的顺序去匹配的，如：</p>
+<pre><code>#list li { }
+</code></pre>
+<p>这样的写法其实很常见。大家平时习惯了从左到右阅读的文字阅读方式，会本能地以为浏览器也是从左到右匹配 CSS 选择器的，因此会推测这个选择器并不会费多少力气：#list 是一个 id 选择器，它对应的元素只有一个，查找起来应该很快。定位到了 list 元素，等于是缩小了范围后再去查找它后代中的 li 元素，没毛病。</p>
+<p>事实上，CSS 选择符是从右到左进行匹配的。我们这个看似“没毛病”的选择器，实际开销相当高：浏览器必须遍历页面上每个 li 元素，并且每次都要去确认这个 li 元素的父元素 id 是不是 list，你说坑不坑！是否还记得：*<strong>{}</strong> 这个坑，但这个家伙很恐怖，它会匹配所有元素，所以浏览器必须去遍历每一个元素！我们低头看看自己页面里的元素个数，感觉心凉了——这得计算多少次呀！</p>
+<p><strong>CSS性能优化方案</strong></p>
+<ul>
+<li>
+<p>避免使用通配符，只对需要用到的元素进行选择。</p>
+</li>
+<li>
+<p>关注可以通过继承实现的属性，避免重复匹配重复定义。</p>
+</li>
+<li>
+<p>少用标签选择器。如果可以，用类选择器替代。</p>
+</li>
+</ul>
+<h2 id="css-与-js-的加载顺序优化">CSS 与 JS 的加载顺序优化</h2>
+<p>其实 HTML, CSS，JS, 都具有阻塞渲染的特性。</p>
+<p>HTML 阻塞，天经地义——没有 HTML，何来 DOM？没有 DOM，渲染和优化，都是空谈。</p>
+<p>只能是针对 CSS 和 JS 的阻塞去了解。</p>
+<h3 id="css-的阻塞">CSS 的阻塞</h3>
+<p>在刚刚的过程中，我们提到 DOM 和 CSSOM 合力才能构建渲染树。这一点会给性能造成严重影响：默认情况下，CSS 是阻塞的资源。浏览器在构建 CSSOM 的过程中，不会渲染任何已处理的内容。即便 DOM 已经解析完毕了，只要 CSSOM 不 OK，那么渲染这个事情就不 OK（这主要是为了避免没有 CSS 的 HTML 页面丑陋地“裸奔”在用户眼前）。</p>
+<p>我们知道，只有当我们开始解析 HTML 后、解析到 link 标签或者 style 标签时，CSS 才登场，CSSOM 的构建才开始。很多时候，DOM 不得不等待 CSSOM。因此我们可以这样总结：</p>
+<pre><code>CSS 是阻塞渲染的资源。需要将它尽早、尽快地下载到客户端，以便缩短首次渲染的时间。
+</code></pre>
+<p>事实上，现在很多团队都已经做到了尽早（将 CSS 放在 head 标签里）和尽快（启用 CDN 实现静态资源加载速度的优化）。这个“把 CSS 往前放”的动作，对人来说已经内化为一种编码习惯。那么现在我们还应该知道，这个“习惯”不是空穴来风，它是由 CSS 的特性决定的。</p>
+<h3 id="js的阻塞">JS的阻塞</h3>
+<p>在首次渲染过程中，JS 并不是一个非登场不可的角色——没有 JS，CSSOM 和 DOM 照样可以组成渲染树，页面依然会呈现——即使它死气沉沉、毫无交互。</p>
+<p>JS 的作用在于修改，它帮助我们修改网页的方方面面：内容、样式以及它如何响应用户交互。这“方方面面”的修改，本质上都是对 DOM 和 CSSOM 进行修改。因此 JS 的执行会阻止 CSSOM，在不作显式声明的情况下，它也会阻塞 DOM。</p>
+<p>前面说过，JS 引擎是独立于渲染引擎存在的。 JS 代码在文档的何处插入，就在何处执行。当 HTML 解析器遇到一个 script 标签时，它会暂停渲染过程，将控制权交给 JS 引擎。JS 引擎对内联的 JS 代码会直接执行，对外部 JS 文件还要先获取到脚本、再进行执行。等 JS 引擎运行完毕，浏览器又会把控制权还给渲染引擎，继续 CSSOM 和 DOM 的构建。 因此与其说是 JS 把 CSS 和 HTML 阻塞了，不如说是 JS 引擎抢走了渲染引擎的控制权。</p>
+<p>现在理解了阻塞的表现与原理，开始思考一个问题。浏览器之所以让 JS 阻塞其它的活动，是因为它不知道 JS 会做什么改变，担心如果不阻止后续的操作，会造成混乱。但是写 JS 的人，知道 JS 会做什么改变。假如可以确认一个 JS 文件的执行时机并不一定非要是此时此刻，就可以通过对它使用 defer 和 async 来避免不必要的阻塞，这里就引出了外部 JS 的三种加载方式。</p>
+<h4 id="js的三种加载方式">JS的三种加载方式</h4>
+<ol>
+<li>正常方式</li>
+</ol>
+<pre><code class="language-html">&lt;script src='app.js'&gt;&lt;/script&gt;
+</code></pre>
+<p>这种情况下 JS 会阻塞浏览器，浏览器必须等待 index.js 加载和执行完毕才能去做其它事情。</p>
+<ol start="2">
+<li>async方式</li>
+</ol>
+<pre><code class="language-html">&lt;script async src='app.js'&gt;&lt;/script&gt;
+</code></pre>
+<p>async 模式下，JS 不会阻塞浏览器做任何其它的事情。它的加载是异步的，当它加载结束，JS 脚本会立即执行。</p>
+<ol>
+<li>defer方式</li>
+</ol>
+<pre><code class="language-html">&lt;script defer src='app.js'&gt;&lt;/script&gt;
+</code></pre>
+<p>defer 模式下，JS 的加载是异步的，执行是被推迟的。等整个文档解析完成、DOMContentLoaded 事件即将被触发时，被标记了 defer 的 JS 文件才会开始依次执行。</p>
+<p>从应用的角度来说，一般当脚本与 DOM 元素和其它脚本之间的依赖关系不强时，会选用 async；当脚本依赖于 DOM 元素和其它脚本的执行结果时，会选用 defer。</p>
+<p>通过审时度势地向 script 标签添加 async/defer，就可以告诉浏览器在等待脚本可用期间不阻止其它的工作，这样可以显著提升性能。</p>
+<h2 id="小结">小结</h2>
+<p>我们知道，当 JS 登场时，往往意味着对 DOM 的操作。DOM 操作所导致的性能开销的“昂贵”，大家可能早就有所耳闻，雅虎军规里很重要的一条就是“尽量减少 DOM 访问”。</p>
+<p>那么 DOM 到底为什么慢，我们如何去规避这种慢呢？这里我们就引出了下一个章节需要重点解释的两个概念：CSS 中的回流（Reflow）与重绘（Repaint）。</p>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li><a href="#%E6%B5%8F%E8%A7%88%E5%99%A8%E6%B8%B2%E6%9F%93%E6%9C%BA%E5%88%B6%E4%B8%80%E8%88%AC%E5%88%86%E4%B8%BA%E4%BB%A5%E4%B8%8B%E6%AD%A5%E9%AA%A4">浏览器渲染机制一般分为以下步骤</a><br>
+*
+<ul>
+<li><a href="#%E6%80%BB%E7%BB%93%E4%B8%8B%E6%B8%B2%E6%9F%93%E8%BF%87%E7%A8%8B">总结下渲染过程</a></li>
+<li><a href="#css%E7%9A%84%E4%BC%98%E5%8C%96">CSS的优化</a></li>
+<li><a href="#css-%E4%B8%8E-js-%E7%9A%84%E5%8A%A0%E8%BD%BD%E9%A1%BA%E5%BA%8F%E4%BC%98%E5%8C%96">CSS 与 JS 的加载顺序优化</a>
+<ul>
+<li><a href="#css-%E7%9A%84%E9%98%BB%E5%A1%9E">CSS 的阻塞</a></li>
+<li><a href="#js%E7%9A%84%E9%98%BB%E5%A1%9E">JS的阻塞</a>
+<ul>
+<li><a href="#js%E7%9A%84%E4%B8%89%E7%A7%8D%E5%8A%A0%E8%BD%BD%E6%96%B9%E5%BC%8F">JS的三种加载方式</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="#%E5%B0%8F%E7%BB%93">小结</a></li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://evansalien.github.io/post/liu-lan-qi-de-zu-cheng/">
+              <h3 class="post-title">
+                浏览器的组成
+              </h3>
+            </a>
+          </div>
+        
+
+        
+
+        <div class="site-footer">
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">Gridea</a>
+  <a class="rss" href="https://evansalien.github.io/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>
