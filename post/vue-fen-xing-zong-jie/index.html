@@ -1,0 +1,426 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Vue初始化到最终渲染的过程分析（一） | Evans Alien</title>
+<link rel="shortcut icon" href="https://evansalien.github.io/favicon.ico?v=1584523308582">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://evansalien.github.io/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="Vue初始化到最终渲染的过程分析（一） | Evans Alien - Atom Feed" href="https://evansalien.github.io/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+
+    <meta name="description" content="来源
+从我最近面试的情况来看（三四年的经验），项目中用Vue的时间也不少，我抛开常见的问题，问了他们对于Vue的熟悉程度，都回答很熟悉，什么工程化、全家桶、脚手架系列的。我就问了下 Vue的渲染过程或者在Object.prototype.t..." />
+    <meta name="keywords" content="" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="https://cdn.bootcss.com/highlight.js/9.12.0/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://evansalien.github.io">
+  <img class="avatar" src="https://evansalien.github.io/images/avatar.png?v=1584523308582" alt="">
+  </a>
+  <h1 class="site-title">
+    Evans Alien
+  </h1>
+  <p class="site-description">
+    温故而知新
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          首页
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          归档
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          标签
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          关于
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              Vue初始化到最终渲染的过程分析（一）
+            </h2>
+            <div class="post-info">
+              <span>
+                2020-03-16
+              </span>
+              <span>
+                9 min read
+              </span>
+              
+            </div>
+            
+              <img class="post-feature-image" src="https://timgsa.baidu.com/timg?image&amp;quality=80&amp;size=b9999_10000&amp;sec=1584533354826&amp;di=e4d3b5c383a82a9c4217cb7d0ddb9620&amp;imgtype=0&amp;src=http%3A%2F%2F5b0988e595225.cdn.sohucs.com%2Fimages%2F20171230%2F5d148f5ba1d44552a72dd738a9b1dbd1.jpeg" alt="">
+            
+            <div class="post-content-wrapper">
+              <div class="post-content">
+                <h2 id="来源">来源</h2>
+<p>从我最近面试的情况来看（三四年的经验），项目中用Vue的时间也不少，我抛开常见的问题，问了他们对于Vue的熟悉程度，都回答很熟悉，什么工程化、全家桶、脚手架系列的。我就问了下 Vue的渲染过程或者在Object.prototype.toString.call(Vue)是什么？ 😱WHAT ? 额，很多人一下回答不上来。不急，下面我们来慢慢的探究下这到底是个什么东东。</p>
+<h2 id="项目目录分析">项目目录分析</h2>
+<figure data-type="image" tabindex="1"><img src="https://evansalien.github.io/post-images/1584343182945.png" alt="" loading="lazy"></figure>
+<h3 id="具体我们来分析-srccore目录下的东西">具体我们来分析 src/core目录下的东西</h3>
+<p><strong>在src/core/index.js</strong><br>
+import Vue from './instance/index'</p>
+<p><strong>在src/core/instance/index.js</strong></p>
+<pre><code class="language-javascript">import { initMixin } from './init'
+import { stateMixin } from './state'
+import { renderMixin } from './render'
+import { eventsMixin } from './events'
+import { lifecycleMixin } from './lifecycle'
+import { warn } from '../util/index'
+
+function Vue(options) {
+  if (process.env.NODE_ENV !== 'production' &amp;&amp;
+    !(this instanceof Vue)
+  ) {
+    warn('Vue is a constructor and should be called with the `new` keyword')
+  }
+  this._init(options)
+}
+
+initMixin(Vue)
+stateMixin(Vue)
+eventsMixin(Vue)
+lifecycleMixin(Vue)
+renderMixin(Vue)
+
+export default Vue
+</code></pre>
+<ul>
+<li>initMixin ：对于各种vue实例各种属性进行初始化</li>
+<li>stateMixin ：Vue原型上绑定state相关的方法和属性，data、props等</li>
+<li>eventsMixin ：Vue原型上绑定事件相关方法</li>
+<li>lifecycleMixin ：Vue原型上绑定生命周期相关方法，比如_update、<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>f</mi><mi>o</mi><mi>r</mi><mi>c</mi><mi>e</mi><mi>U</mi><mi>p</mi><mi>d</mi><mi>a</mi><mi>t</mi><mi>e</mi><mi mathvariant="normal">、</mi></mrow><annotation encoding="application/x-tex">forceUpdate、</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathdefault" style="margin-right:0.10764em;">f</span><span class="mord mathdefault">o</span><span class="mord mathdefault" style="margin-right:0.02778em;">r</span><span class="mord mathdefault">c</span><span class="mord mathdefault">e</span><span class="mord mathdefault" style="margin-right:0.10903em;">U</span><span class="mord mathdefault">p</span><span class="mord mathdefault">d</span><span class="mord mathdefault">a</span><span class="mord mathdefault">t</span><span class="mord mathdefault">e</span><span class="mord cjk_fallback">、</span></span></span></span>destroy</li>
+<li>renderMixin : Vue原型上绑定和渲染相关的方法</li>
+</ul>
+<h4 id="initmixin">initMixin</h4>
+<p><strong>在src/core/instance/init.js</strong></p>
+<ul>
+<li><strong>第一点</strong>：initMixin 是Vue的一些初始化实例的方法，在还没有构造一个对象前是不会进入到这个方法内部，当通过new出一个对象后才会进入，原因如下：</li>
+</ul>
+<pre><code class="language-javascript">Vue.prototype._init = function (options?: Object) {}
+</code></pre>
+<p>这里有一个options?:object的校验，刚开始即只是引入<script src="../../dist/vue.js"></script>这个文件，当var vm = new Vue()之后才进入_init方法内部。</p>
+<ul>
+<li><strong>第二点</strong>：_init方法中对于$options设置：</li>
+</ul>
+<pre><code class="language-javascript"> vm.$options = mergeOptions(
+        resolveConstructorOptions(vm.constructor),
+        options || {},
+        vm
+      )
+</code></pre>
+<ul>
+<li><strong>第三点</strong>：_init方法中其他初始化方法：</li>
+</ul>
+<pre><code class="language-javascript">    initLifecycle(vm)
+    initEvents(vm)
+    initRender(vm)
+    callHook(vm, 'beforeCreate')
+    initInjections(vm) // resolve injections before data/props
+    initState(vm)
+    initProvide(vm) // resolve provide after data/props
+    callHook(vm, 'created')
+</code></pre>
+<p>接下来将会一个个初始化方法说明，初次之外_init方法还有一些变量的初始化，比如_uid、_isVue、_name、_renderProxy的初始化</p>
+<ul>
+<li><strong>第四点</strong>：最后在_init方法中需要注意</li>
+</ul>
+<pre><code class="language-javascript"> if (vm.$options.el) {
+      vm.$mount(vm.$options.el)
+    }
+</code></pre>
+<p>调用$mount 挂在根元素上</p>
+<h4 id="statemixin">stateMixin</h4>
+<p><strong>src/core/instance/state.js</strong></p>
+<ul>
+<li>
+<p><strong>第一点</strong>： stateMixin是对于Vue原型对象(Vue.prototype)加上<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>d</mi><mi>a</mi><mi>t</mi><mi>a</mi><mi mathvariant="normal">、</mi></mrow><annotation encoding="application/x-tex">data、</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.69444em;vertical-align:0em;"></span><span class="mord mathdefault">d</span><span class="mord mathdefault">a</span><span class="mord mathdefault">t</span><span class="mord mathdefault">a</span><span class="mord cjk_fallback">、</span></span></span></span>props、<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>d</mi><mi>e</mi><mi>l</mi><mi>e</mi><mi>t</mi><mi>e</mi><mi mathvariant="normal">、</mi></mrow><annotation encoding="application/x-tex">delete、</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.69444em;vertical-align:0em;"></span><span class="mord mathdefault">d</span><span class="mord mathdefault">e</span><span class="mord mathdefault" style="margin-right:0.01968em;">l</span><span class="mord mathdefault">e</span><span class="mord mathdefault">t</span><span class="mord mathdefault">e</span><span class="mord cjk_fallback">、</span></span></span></span>watch、<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>s</mi><mi>e</mi><mi>t</mi><mi mathvariant="normal">属</mi><mi mathvariant="normal">性</mi><mi mathvariant="normal">。</mi><mi mathvariant="normal">并</mi><mi mathvariant="normal">且</mi><mi mathvariant="normal">通</mi><mi mathvariant="normal">过</mi><mi>O</mi><mi>b</mi><mi>j</mi><mi>e</mi><mi>c</mi><mi>t</mi><mi mathvariant="normal">.</mi><mi>d</mi><mi>e</mi><mi>f</mi><mi>i</mi><mi>n</mi><mi>e</mi><mi>P</mi><mi>r</mi><mi>o</mi><mi>p</mi><mi>e</mi><mi>r</mi><mi>t</mi><mi>y</mi><mi mathvariant="normal">对</mi></mrow><annotation encoding="application/x-tex">set属性。并且通过Object.defineProperty对</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathdefault">s</span><span class="mord mathdefault">e</span><span class="mord mathdefault">t</span><span class="mord cjk_fallback">属</span><span class="mord cjk_fallback">性</span><span class="mord cjk_fallback">。</span><span class="mord cjk_fallback">并</span><span class="mord cjk_fallback">且</span><span class="mord cjk_fallback">通</span><span class="mord cjk_fallback">过</span><span class="mord mathdefault" style="margin-right:0.02778em;">O</span><span class="mord mathdefault">b</span><span class="mord mathdefault" style="margin-right:0.05724em;">j</span><span class="mord mathdefault">e</span><span class="mord mathdefault">c</span><span class="mord mathdefault">t</span><span class="mord">.</span><span class="mord mathdefault">d</span><span class="mord mathdefault">e</span><span class="mord mathdefault" style="margin-right:0.10764em;">f</span><span class="mord mathdefault">i</span><span class="mord mathdefault">n</span><span class="mord mathdefault">e</span><span class="mord mathdefault" style="margin-right:0.13889em;">P</span><span class="mord mathdefault" style="margin-right:0.02778em;">r</span><span class="mord mathdefault">o</span><span class="mord mathdefault">p</span><span class="mord mathdefault">e</span><span class="mord mathdefault" style="margin-right:0.02778em;">r</span><span class="mord mathdefault">t</span><span class="mord mathdefault" style="margin-right:0.03588em;">y</span><span class="mord cjk_fallback">对</span></span></span></span>data、$props属性进行set和get。</p>
+</li>
+<li>
+<p><strong>第二点</strong>：initState方法是在init.js中调用，即实例化之后才调用的，是个实例对象添加属性。</p>
+</li>
+</ul>
+<pre><code class="language-javascript">export function initState(vm: Component) {
+// 首先在vm上初始化一个_watchers数组，缓存这个vm上的所有watcher
+  vm._watchers = []
+  const opts = vm.$options
+  if (opts.props) initProps(vm, opts.props)
+  if (opts.methods) initMethods(vm, opts.methods)
+  if (opts.data) {
+    initData(vm)
+  } else {
+    observe(vm._data = {}, true /* asRootData */)
+  }
+  if (opts.computed) initComputed(vm, opts.computed)
+  if (opts.watch &amp;&amp; opts.watch !== nativeWatch) {
+    initWatch(vm, opts.watch)
+  }
+}
+</code></pre>
+<p>对于实例对象进行相关属性的初始化，另外data、props因为需要双向绑定，在initData、initProps中都有一个proxy方法对这两个属性进行set和get的设置</p>
+<h4 id="eventmixin">eventMixin</h4>
+<ul>
+<li>
+<p><strong>第一点</strong>： eventsMixin是对于Vue原型对象(Vue.prototype)绑定一些事件方法，比如<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>o</mi><mi>n</mi><mi mathvariant="normal">、</mi></mrow><annotation encoding="application/x-tex">on、</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.43056em;vertical-align:0em;"></span><span class="mord mathdefault">o</span><span class="mord mathdefault">n</span><span class="mord cjk_fallback">、</span></span></span></span>once、<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>o</mi><mi>f</mi><mi>f</mi><mi mathvariant="normal">、</mi></mrow><annotation encoding="application/x-tex">off、</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathdefault">o</span><span class="mord mathdefault" style="margin-right:0.10764em;">f</span><span class="mord mathdefault" style="margin-right:0.10764em;">f</span><span class="mord cjk_fallback">、</span></span></span></span>emit。</p>
+</li>
+<li>
+<p><strong>第二点</strong>： initEvents是对于实例对象初始化事件</p>
+</li>
+</ul>
+<pre><code class="language-javascript">export function initEvents(vm: Component) {
+  vm._events = Object.create(null)
+  vm._hasHookEvent = false
+  // init parent attached events 初始化父级相关事件
+  const listeners = vm.$options._parentListeners
+  if (listeners) {
+    updateComponentListeners(vm, listeners)
+  }
+}
+</code></pre>
+<p>创建_events一个空对象之后用来存放事件，_hasHookEvent是一个优化标记（可以暂时不理会），然后初始化父级事件。根据是否有父级监听事件，如果有则更新父级事件</p>
+<h4 id="lifecyclemixin">lifecycleMixin</h4>
+<ul>
+<li><strong>第一点</strong>： lifecycleMixin是对Vue原型对象(Vue.prototype)绑定_update、<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>f</mi><mi>o</mi><mi>r</mi><mi>c</mi><mi>e</mi><mi>U</mi><mi>p</mi><mi>d</mi><mi>a</mi><mi>t</mi><mi>e</mi><mi mathvariant="normal">、</mi></mrow><annotation encoding="application/x-tex">forceUpdate、</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathdefault" style="margin-right:0.10764em;">f</span><span class="mord mathdefault">o</span><span class="mord mathdefault" style="margin-right:0.02778em;">r</span><span class="mord mathdefault">c</span><span class="mord mathdefault">e</span><span class="mord mathdefault" style="margin-right:0.10903em;">U</span><span class="mord mathdefault">p</span><span class="mord mathdefault">d</span><span class="mord mathdefault">a</span><span class="mord mathdefault">t</span><span class="mord mathdefault">e</span><span class="mord cjk_fallback">、</span></span></span></span>destroy三个生命周期方法。_update方法中通过调用__patch__方法更新虚拟dom；</li>
+</ul>
+<pre><code class="language-javascript">if (!prevVnode) {
+      // initial render
+      vm.$el = vm.__patch__(vm.$el, vnode, hydrating, false /* removeOnly */)
+    } else {
+      // updates
+      vm.$el = vm.__patch__(prevVnode, vnode)
+    }
+</code></pre>
+<p><span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>f</mi><mi>o</mi><mi>r</mi><mi>c</mi><mi>e</mi><mi>U</mi><mi>p</mi><mi>d</mi><mi>a</mi><mi>t</mi><mi>e</mi><mi mathvariant="normal">强</mi><mi mathvariant="normal">制</mi><mi mathvariant="normal">重</mi><mi mathvariant="normal">新</mi><mi mathvariant="normal">渲</mi><mi mathvariant="normal">染</mi><mi mathvariant="normal">实</mi><mi mathvariant="normal">例</mi><mi mathvariant="normal">本</mi><mi mathvariant="normal">身</mi><mi mathvariant="normal">和</mi><mi mathvariant="normal">插</mi><mi mathvariant="normal">入</mi><mi mathvariant="normal">插</mi><mi mathvariant="normal">槽</mi><mi mathvariant="normal">内</mi><mi mathvariant="normal">容</mi><mi mathvariant="normal">的</mi><mi mathvariant="normal">子</mi><mi mathvariant="normal">组</mi><mi mathvariant="normal">件</mi><mi mathvariant="normal">；</mi></mrow><annotation encoding="application/x-tex">forceUpdate强制重新渲染实例本身和插入插槽内容的子组件；</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathdefault" style="margin-right:0.10764em;">f</span><span class="mord mathdefault">o</span><span class="mord mathdefault" style="margin-right:0.02778em;">r</span><span class="mord mathdefault">c</span><span class="mord mathdefault">e</span><span class="mord mathdefault" style="margin-right:0.10903em;">U</span><span class="mord mathdefault">p</span><span class="mord mathdefault">d</span><span class="mord mathdefault">a</span><span class="mord mathdefault">t</span><span class="mord mathdefault">e</span><span class="mord cjk_fallback">强</span><span class="mord cjk_fallback">制</span><span class="mord cjk_fallback">重</span><span class="mord cjk_fallback">新</span><span class="mord cjk_fallback">渲</span><span class="mord cjk_fallback">染</span><span class="mord cjk_fallback">实</span><span class="mord cjk_fallback">例</span><span class="mord cjk_fallback">本</span><span class="mord cjk_fallback">身</span><span class="mord cjk_fallback">和</span><span class="mord cjk_fallback">插</span><span class="mord cjk_fallback">入</span><span class="mord cjk_fallback">插</span><span class="mord cjk_fallback">槽</span><span class="mord cjk_fallback">内</span><span class="mord cjk_fallback">容</span><span class="mord cjk_fallback">的</span><span class="mord cjk_fallback">子</span><span class="mord cjk_fallback">组</span><span class="mord cjk_fallback">件</span><span class="mord cjk_fallback">；</span></span></span></span>destroy销毁一个实例，清理它与其它实例的连接，解绑它的全部指令及事件监听器，触发 beforeDestroy 和 destroyed 的钩子</p>
+<ul>
+<li><strong>第二点</strong>： initLifecycle是在_init方法中调用，是实例生命周期的初始化，其中会包括很多变量</li>
+</ul>
+<pre><code class="language-javascript">export function initLifecycle(vm: Component) {
+  const options = vm.$options
+
+  // locate first non-abstract parent 创建第一个非抽象父组件，抽象组件：它自身不会渲染一个 DOM 元素，也不会出现在父组件链中，例如&lt;keep-alive&gt;
+  let parent = options.parent
+  if (parent &amp;&amp; !options.abstract) {
+    while (parent.$options.abstract &amp;&amp; parent.$parent) {
+      parent = parent.$parent
+    }
+    parent.$children.push(vm)
+  }
+
+  vm.$parent = parent
+  vm.$root = parent ? parent.$root : vm
+
+  vm.$children = []
+  vm.$refs = {}
+
+  vm._watcher = null // watcher对象
+  vm._inactive = null // 和keep-alive中组件状态有关系
+  vm._directInactive = false // 和keep-alive中组件状态有关系
+  vm._isMounted = false //当前实例是否被挂载
+  vm._isDestroyed = false // 当前实例是否被销毁
+  vm._isBeingDestroyed = false // 当前实例是否正在被销毁或者没销毁完全
+}
+</code></pre>
+<ul>
+<li><strong>第三点</strong>： callHook是在_init方法中调用，这个方法是直接调用钩子，调用形式如下</li>
+</ul>
+<pre><code class="language-javascript">callHook(vm, 'beforeCreate')
+callHook(vm, 'created')
+</code></pre>
+<h4 id="renderminix">RenderMinix</h4>
+<p><strong>src/core/instance/render.js</strong></p>
+<ul>
+<li><strong>第一点</strong>： renderMixin方法主要是给Vue原型对象绑定$nextTick、_render两个方法,其中_render方法代码如下：</li>
+</ul>
+<pre><code class="language-javascript">Vue.prototype._render = function (): VNode {
+    ……
+    // set parent vnode. this allows render functions to have access
+    // to the data on the placeholder node.
+    vm.$vnode = _parentVnode
+    // render self
+    let vnode
+    try {
+      vnode = render.call(vm._renderProxy, vm.$createElement)
+    } catch (e) {
+      handleError(e, vm, `render`)
+      if (process.env.NODE_ENV !== 'production') {
+        if (vm.$options.renderError) {
+          try {
+            vnode = vm.$options.renderError.call(vm._renderProxy, vm.$createElement, e)
+          } catch (e) {
+            handleError(e, vm, `renderError`)
+            vnode = vm._vnode
+          }
+        } else {
+          vnode = vm._vnode
+        }
+      } else {
+        vnode = vm._vnode
+      }
+    }
+    ……
+    return vnode
+  }
+</code></pre>
+<p>在这个方法中主要是try……catch这里创建了vnode。<br>
+vnode = render.call(vm._renderProxy, vm.$createElement) 创建一个vnode并且返回，如果失败则返回一个空的vnode vnode = createEmptyVNode()</p>
+<ul>
+<li><strong>第二点</strong>： initRender是在_init方法中调用，进行实例渲染属性的绑定并且对一些属性的监听</li>
+</ul>
+<pre><code class="language-javascript">export function initRender(vm: Component) {
+  ……
+  vm._c = (a, b, c, d) =&gt; createElement(vm, a, b, c, d, false)
+  // normalization is always applied for the public version, used in
+  // user-written render functions.
+  vm.$createElement = (a, b, c, d) =&gt; createElement(vm, a, b, c, d, true)
+  ……
+}
+</code></pre>
+<p>这里着重关注一下createElement方法，传入vnode以及dom的属性创建真正dom节点。</p>
+<h2 id="源码构建基于-rollup">源码构建，基于 Rollup</h2>
+<figure data-type="image" tabindex="2"><img src="https://evansalien.github.io/post-images/1584343201997.png" alt="" loading="lazy"></figure>
+<p>总结：<strong>Runtime Only：通常需要借助如 webpack 的 vue-loader 工具把 .vue 文件编译成JavaScript，因为是在编译阶段做 的，所以它只包含运行时的 Vue.js 代码，因此代码体积 也会更轻量。 Runtime + Compiler：我们如果没有对代码做预编译，但 又使用了 Vue 的 template 属性并传入一个字符串，则需 要在客户端编译模板。 Vue.js 2.0 中，最终渲染都是通 过 render 函数，如果写 template 属性，则需要编译成 render 函数，那么这个编译过程会发生运行时，所以需 要带有编译器的版本。</strong></p>
+<h2 id="vue的本质构造函数">Vue的本质：构造函数</h2>
+<pre><code class="language-javascript">    function Vue (options) {
+    if (process.env.NODE_ENV !== 'production' &amp;&amp;
+        !(this instanceof Vue)
+    ) {
+        warn('Vue is a constructor and should be called with the `new`  keyword')
+    }
+    this._init(options)
+    }
+</code></pre>
+<p>总结：<strong>vue 本质上就是一个用 Function 实现的 Class，然后在它 的原型 prototype 以及它本身上扩展了一系列的方法和属 性。Vue 不用 ES6 的 Class 去实现的原因：按功能区分，把 功能扩展分散到多个模块中去实现，然后挂载中 vue 的 原型 prototype 上，也有在 Vue 这个对象本身 上。而不是在一个模块里实现所有，这种方式是用 Class 难以 实现的。这么做的好处是非常方便代码的维护和管理</strong></p>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#%E6%9D%A5%E6%BA%90">来源</a></li>
+<li><a href="#%E9%A1%B9%E7%9B%AE%E7%9B%AE%E5%BD%95%E5%88%86%E6%9E%90">项目目录分析</a>
+<ul>
+<li><a href="#%E5%85%B7%E4%BD%93%E6%88%91%E4%BB%AC%E6%9D%A5%E5%88%86%E6%9E%90-srccore%E7%9B%AE%E5%BD%95%E4%B8%8B%E7%9A%84%E4%B8%9C%E8%A5%BF">具体我们来分析 src/core目录下的东西</a>
+<ul>
+<li><a href="#initmixin">initMixin</a></li>
+<li><a href="#statemixin">stateMixin</a></li>
+<li><a href="#eventmixin">eventMixin</a></li>
+<li><a href="#lifecyclemixin">lifecycleMixin</a></li>
+<li><a href="#renderminix">RenderMinix</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="#%E6%BA%90%E7%A0%81%E6%9E%84%E5%BB%BA%E5%9F%BA%E4%BA%8E-rollup">源码构建，基于 Rollup</a></li>
+<li><a href="#vue%E7%9A%84%E6%9C%AC%E8%B4%A8%E6%9E%84%E9%80%A0%E5%87%BD%E6%95%B0">Vue的本质：构造函数</a></li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://evansalien.github.io/post/liu-lan-qi-xuan-ran-pian-xia/">
+              <h3 class="post-title">
+                浏览器-渲染篇(下)
+              </h3>
+            </a>
+          </div>
+        
+
+        
+
+        <div class="site-footer">
+  Powered by <a href="https://github.com/EvansAlien/evansalien.github.io" target="_blank">Evans Alien</a>
+  <a class="rss" href="https://evansalien.github.io/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>

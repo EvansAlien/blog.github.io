@@ -1,0 +1,252 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Vue初始化到最终渲染过程的分析（二） | Evans Alien</title>
+<link rel="shortcut icon" href="https://evansalien.github.io/favicon.ico?v=1584523308582">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://evansalien.github.io/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="Vue初始化到最终渲染过程的分析（二） | Evans Alien - Atom Feed" href="https://evansalien.github.io/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+
+    <meta name="description" content="$mount
+紧接着上篇讲的vue在init后，就会进行mount挂载过程。mount 挂载过程。mount挂载过程。mount 这个方法的实现是和平台、构建方式都相关的。 我们分析带 compiler 版本的 $mount 实现。在 Vu..." />
+    <meta name="keywords" content="Vue" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="https://cdn.bootcss.com/highlight.js/9.12.0/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://evansalien.github.io">
+  <img class="avatar" src="https://evansalien.github.io/images/avatar.png?v=1584523308582" alt="">
+  </a>
+  <h1 class="site-title">
+    Evans Alien
+  </h1>
+  <p class="site-description">
+    温故而知新
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          首页
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          归档
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          标签
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          关于
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              Vue初始化到最终渲染过程的分析（二）
+            </h2>
+            <div class="post-info">
+              <span>
+                2020-03-18
+              </span>
+              <span>
+                3 min read
+              </span>
+              
+                <a href="https://evansalien.github.io/tag/vue/" class="post-tag">
+                  # Vue
+                </a>
+              
+            </div>
+            
+              <img class="post-feature-image" src="https://timgsa.baidu.com/timg?image&amp;quality=80&amp;size=b9999_10000&amp;sec=1584533354826&amp;di=e4d3b5c383a82a9c4217cb7d0ddb9620&amp;imgtype=0&amp;src=http%3A%2F%2F5b0988e595225.cdn.sohucs.com%2Fimages%2F20171230%2F5d148f5ba1d44552a72dd738a9b1dbd1.jpeg" alt="">
+            
+            <div class="post-content-wrapper">
+              <div class="post-content">
+                <h2 id="mount">$mount</h2>
+<p>紧接着上篇讲的vue在init后，就会进行<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>m</mi><mi>o</mi><mi>u</mi><mi>n</mi><mi>t</mi><mi mathvariant="normal">挂</mi><mi mathvariant="normal">载</mi><mi mathvariant="normal">过</mi><mi mathvariant="normal">程</mi><mi mathvariant="normal">。</mi></mrow><annotation encoding="application/x-tex">mount 挂载过程。</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.61508em;vertical-align:0em;"></span><span class="mord mathdefault">m</span><span class="mord mathdefault">o</span><span class="mord mathdefault">u</span><span class="mord mathdefault">n</span><span class="mord mathdefault">t</span><span class="mord cjk_fallback">挂</span><span class="mord cjk_fallback">载</span><span class="mord cjk_fallback">过</span><span class="mord cjk_fallback">程</span><span class="mord cjk_fallback">。</span></span></span></span>mount 这个方法的实现是和平台、构建方式都相关的。 我们分析带 compiler 版本的 $mount 实现。在 Vue 2.0 版本中，所有 Vue 的组件最终都会转换成 render 方法。</p>
+<ul>
+<li>
+<p><strong>第一点</strong>：挂载的时候，它对el做了限制，Vue不能挂载到body、html这样的根节点上。</p>
+</li>
+<li>
+<p><strong>第二点</strong>：如果没有定义render方法，则会调用compileToFunctions方法把el或者template字符串转换成render方法。</p>
+</li>
+<li>
+<p><strong>第三点</strong>： <strong>mountComponent</strong>核心就是先实例化一个Watcher，在它的回调函数中会调用 updateComponent 方法，在此方法中调 用 vm._render 方法先生成虚拟 Node，最终调用 vm._update 更 新 DOM。</p>
+</li>
+<li>
+<p><strong>第四点</strong>：将 vm._isMounted 设置为 true，表示已经挂载。</p>
+</li>
+<li>
+<p><strong>第五点</strong>：执行 mounted 钩子函数：callHook(vm, 'mounted')。</p>
+</li>
+</ul>
+<h2 id="complie">complie</h2>
+<ul>
+<li>在 Vue 2.0 版本中，所有 Vue 的组件的渲染最终都需要 render 方法，无论 我们是用单文件 .vue 方式开发组件，还是写了 el 或者 template 属性，最终 都会转换成 render 方法，那么这个过程是 Vue 的一个“在线编译”的过程，它 是调用 compileToFunctions 方法实现的。</li>
+</ul>
+<h2 id="render">render</h2>
+<p>Vue 的 _render 方法是实例一个私有方法，最终会把实例渲染成一个虚拟 Node。</p>
+<ul>
+<li>vm_render最终是通过执行一个createElement方法并返回的是vnode，它是一个虚拟Node</li>
+</ul>
+<h2 id="virtual-dom虚拟dom">Virtual DOM（虚拟dom）</h2>
+<p>其本质是一个原生的JS对象，用class定义出来的。</p>
+<ul>
+<li>
+<p><strong>第一点</strong>：<strong>核心定义</strong> 几个关键属性，标签名、数据、子节点、键值等，其它属性都是用来扩展 VNode的灵活以实现一些特殊 feature 的。</p>
+</li>
+<li>
+<p><strong>第二点</strong>：映射到真实DOM， 实际上要经历 VNode 的 create、diff、patch等过程。</p>
+</li>
+<li>
+<p><strong>第三点</strong>：<strong>cretateElement创建VNode</strong></p>
+</li>
+</ul>
+<h2 id="update">update</h2>
+<p>其核心是通过 Vue 的 _ update 方法，<em>update 方 法的作用是把 VNode 渲 染成真实的 DOM。</em> update 的核心就是调用 vm.<strong>patch</strong> 方法，__ patch__在不同的平台，比 如 web 和 weex 上的定义 是不一样的。</p>
+<h3 id="首次渲染">首次渲染</h3>
+<ul>
+<li>
+<p>通过 createElm 方法，把虚拟节 点创建真实的 DOM 并插入到它的父 节点中。</p>
+</li>
+<li>
+<p>然后调用 createChildren 方法去创 建子元素，实际上是遍历子虚拟节 点，递归调用 createElm。</p>
+</li>
+<li>
+<p>接着再调用 invokeCreateHooks 方法执行所 有的 create 的钩子并把 vnode push 到 insertedVnodeQueue</p>
+</li>
+<li>
+<p>最后调用 insert 方法把 DOM 插入到父节点中，因为 是递归调用，子元素会优先 调用 insert，所以整个 vnode 树节点的插入顺序是 先子后父。</p>
+</li>
+</ul>
+<h3 id="数据跟新">数据跟新</h3>
+<h2 id="dom">DOM</h2>
+<p>Vue最终创建的 DOM</p>
+<h2 id="总结">总结</h2>
+<p>**初始化 Vue 到最终渲染的整个过程：**new Vue =&gt; init =&gt; $mounted =&gt; compile =&gt; render =&gt; vnode =&gt; patch =&gt; DOM</p>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#mount">$mount</a></li>
+<li><a href="#complie">complie</a></li>
+<li><a href="#render">render</a></li>
+<li><a href="#virtual-dom%E8%99%9A%E6%8B%9Fdom">Virtual DOM（虚拟dom）</a></li>
+<li><a href="#update">update</a>
+<ul>
+<li><a href="#%E9%A6%96%E6%AC%A1%E6%B8%B2%E6%9F%93">首次渲染</a></li>
+<li><a href="#%E6%95%B0%E6%8D%AE%E8%B7%9F%E6%96%B0">数据跟新</a></li>
+</ul>
+</li>
+<li><a href="#dom">DOM</a></li>
+<li><a href="#%E6%80%BB%E7%BB%93">总结</a></li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://evansalien.github.io/post/vue-fen-xing-zong-jie/">
+              <h3 class="post-title">
+                Vue初始化到最终渲染的过程分析（一）
+              </h3>
+            </a>
+          </div>
+        
+
+        
+
+        <div class="site-footer">
+  Powered by <a href="https://github.com/EvansAlien/evansalien.github.io" target="_blank">Evans Alien</a>
+  <a class="rss" href="https://evansalien.github.io/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>
