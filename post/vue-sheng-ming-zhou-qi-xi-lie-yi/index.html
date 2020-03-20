@@ -1,0 +1,283 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Vue生命周期 | Evans Alien</title>
+<link rel="shortcut icon" href="https://evansalien.github.io/favicon.ico?v=1584681916401">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://evansalien.github.io/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="Vue生命周期 | Evans Alien - Atom Feed" href="https://evansalien.github.io/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+
+    <meta name="description" content="概念
+一个从Vue实例的创建到销毁的过程。
+生命周期阶段与钩子
+
+如图可以看到每一个阶段中的钩子命名都很好记忆，阶段开始前使用 beforeXxx，阶段后结束后使用xxxed
+
+除这 8 个核心钩子，另外还有 3 个新增功能型钩子，目前总共..." />
+    <meta name="keywords" content="Vue" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="https://cdn.bootcss.com/highlight.js/9.12.0/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://evansalien.github.io">
+  <img class="avatar" src="https://evansalien.github.io/images/avatar.png?v=1584681916401" alt="">
+  </a>
+  <h1 class="site-title">
+    Evans Alien
+  </h1>
+  <p class="site-description">
+    温故而知新
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          首页
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          归档
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          标签
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          关于
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              Vue生命周期
+            </h2>
+            <div class="post-info">
+              <span>
+                2020-03-19
+              </span>
+              <span>
+                3 min read
+              </span>
+              
+                <a href="https://evansalien.github.io/tag/vue/" class="post-tag">
+                  # Vue
+                </a>
+              
+            </div>
+            
+              <img class="post-feature-image" src="https://timgsa.baidu.com/timg?image&amp;quality=80&amp;size=b9999_10000&amp;sec=1584533354826&amp;di=e4d3b5c383a82a9c4217cb7d0ddb9620&amp;imgtype=0&amp;src=http%3A%2F%2F5b0988e595225.cdn.sohucs.com%2Fimages%2F20171230%2F5d148f5ba1d44552a72dd738a9b1dbd1.jpeg" alt="">
+            
+            <div class="post-content-wrapper">
+              <div class="post-content">
+                <h2 id="概念">概念</h2>
+<p>一个从Vue实例的创建到销毁的过程。</p>
+<h2 id="生命周期阶段与钩子">生命周期阶段与钩子</h2>
+<figure data-type="image" tabindex="1"><img src="https://evansalien.github.io/post-images/1584601074831.png" alt="" loading="lazy"></figure>
+<pre><code>如图可以看到每一个阶段中的钩子命名都很好记忆，阶段开始前使用 beforeXxx，阶段后结束后使用xxxed
+</code></pre>
+<p>除这 8 个核心钩子，另外还有 3 个新增功能型钩子，目前总共是 11 个钩子 顺带提一下这 3 个钩子的功能</p>
+<ol>
+<li>组件缓存，activated 与 deactivated，这两个钩子也是一对的，分别表示被 keep-alive 缓存的组件激活和停用时调用。</li>
+<li>组件错误捕获，errorCaptured，对组件中出现对异常错误进行处理，使用较少。</li>
+</ol>
+<h2 id="图解生命周期">图解生命周期</h2>
+<p>借鉴官方图解</p>
+<figure data-type="image" tabindex="2"><img src="https://cn.vuejs.org/images/lifecycle.png" alt="" loading="lazy"></figure>
+<p>对于上面的理解，需要对Vue源码进行大概梳理，如下图</p>
+<figure data-type="image" tabindex="3"><img src="https://evansalien.github.io/post-images/1584604698149.png" alt="" loading="lazy"></figure>
+<p>可以看到，从实例创建、组件挂载、渲染的一些过程中有明显的的周期节点。</p>
+<h2 id="简化理解">简化理解</h2>
+<figure data-type="image" tabindex="4"><img src="https://evansalien.github.io/post-images/1584604788789.png" alt="" loading="lazy"></figure>
+<p>如图出现一些问题</p>
+<ol>
+<li>什么时期创建 el ？</li>
+<li>什么时期挂载 data ？</li>
+<li>什么时期可以访问 dom ？</li>
+<li>什么情况下组件会更新？更新是同步更新还是异步更新？</li>
+<li>什么情况下组件会被销毁？</li>
+<li>销毁组件后，还可以访问哪些内容？</li>
+</ol>
+<pre><code class="language-javascript">export default {
+
+    data() {
+        return {
+            message: 1
+        }
+    },
+    methods: {
+        printInfo(name) {
+            console.log(name);
+            console.log('el', this.$el);
+            console.log('data', this.$data);
+            console.log('watch', this.$watch)
+        }
+    },
+    beforeCteate() {
+        this.printInfo('beforeCreate');
+        // 无法访问 this 中的 data、method, 只能访问到watch
+    },
+    created() {    
+        this.message = this.message + 1;
+        this.printComponentInfo('created')  
+        // 能访问到 data，但是访问不到 el
+     },  
+     beforeMount() {    
+         this.printComponentInfo('beforeMount')  
+         // 可以访问 data，但是拿不到 el
+     },  
+     mounted() {    
+         this.printComponentInfo('mounted')  
+         // 可以访问 el
+     },  
+     beforeUpdate() {    
+         this.printComponentInfo('beforeUpdate')  
+        // 获取跟新前 data ，el的属性
+
+     },  
+     updated() {    
+         this.printComponentInfo('updated')  
+          // 当 data被修改发生在 created 阶段是，不触发， 但是el 和 data 的值都会改变
+        //  如果发生在mounted 阶段， 触发, 相当于异步更新
+     },  
+     beforeDestroy() {    
+         this.printComponentInfo('beforeDestroy')  
+        //  触发方式： 1. 手动调用 $destroy
+        //                    2. v-if, v-for
+        //                    3. 路由切换或者刷新页面
+        // 还是能访问 el, data, watch  
+     },  
+     destroyed() {    
+         this.printComponentInfo('destroyed')  
+        //  // 还是能访问 el, data, watch  
+      },
+
+}
+</code></pre>
+<h2 id="生命周期应用场景">生命周期应用场景</h2>
+<ol>
+<li>
+<p>beforeCreate 谨慎操作this：beforeCreate 无法访问 this 中的 data、method</p>
+</li>
+<li>
+<p>created：可以访问 this， 但是无法访问dom， dom未挂载，初始化渲染的请求可以放在这里</p>
+</li>
+<li>
+<p>mounted: 可以操作DOM代码， 如需根据数据改变布局的请求可放在这里进行</p>
+</li>
+</ol>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#%E6%A6%82%E5%BF%B5">概念</a></li>
+<li><a href="#%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F%E9%98%B6%E6%AE%B5%E4%B8%8E%E9%92%A9%E5%AD%90">生命周期阶段与钩子</a></li>
+<li><a href="#%E5%9B%BE%E8%A7%A3%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F">图解生命周期</a></li>
+<li><a href="#%E7%AE%80%E5%8C%96%E7%90%86%E8%A7%A3">简化理解</a></li>
+<li><a href="#%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F%E5%BA%94%E7%94%A8%E5%9C%BA%E6%99%AF">生命周期应用场景</a></li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://evansalien.github.io/post/vue-chu-shi-hua-dao-zui-zhong-xuan-ran-guo-cheng-de-fen-xi-er/">
+              <h3 class="post-title">
+                Vue初始化到最终渲染过程的分析（二）
+              </h3>
+            </a>
+          </div>
+        
+
+        
+
+        <div class="site-footer">
+  Powered by <a href="https://github.com/EvansAlien/evansalien.github.io" target="_blank">Evans Alien</a>
+  <a class="rss" href="https://evansalien.github.io/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>
